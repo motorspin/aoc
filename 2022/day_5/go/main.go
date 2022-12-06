@@ -32,6 +32,7 @@ func main() {
 	// How many stacks do we have? Let's take a look at the last entry in stackStrings
 	numStacks := len(strings.Fields(stackStrings[len(stackStrings)-1]))
 	stacks := make([]Stack, numStacks)
+	stacks2 := make([]Stack, numStacks)
 
 	for i := len(stackStrings) - 1; i >= 0; i-- {
 		//fmt.Println(stackStrings[i])
@@ -46,6 +47,7 @@ func main() {
 			if stackStrings[i][a] != '[' && stackStrings[i][a] != ']' && stackStrings[i][a] != ' ' {
 				//fmt.Println(string(stackStrings[i][a]), "at position", a)
 				stacks[((a - 1) / 4)].Push(rune(stackStrings[i][a]))
+				stacks2[((a - 1) / 4)].Push(rune(stackStrings[i][a]))
 			}
 		}
 	}
@@ -68,6 +70,33 @@ func main() {
 
 	fmt.Printf("Part 1: ")
 	for _, stack := range stacks {
+		char, _ := stack.Peek()
+		fmt.Printf("%c", char)
+	}
+	fmt.Println("")
+
+	for _, instruction := range instructions {
+		var qty int
+		var orig int
+		var dest int
+		fmt.Sscanf(instruction, "move %d from %d to %d", &qty, &orig, &dest)
+
+		temp := make([]rune, qty)
+
+		for i := 0; i < qty; i++ {
+			val, _ := stacks2[orig-1].Pop()
+			temp[i] = val
+		}
+
+		for i := qty - 1; i >= 0; i-- {
+			stacks2[dest-1].Push(temp[i])
+		}
+
+		//fmt.Printf("Moving %d creates from stack %d to stack %d\n", qty, orig, dest)
+	}
+
+	fmt.Printf("Part 2: ")
+	for _, stack := range stacks2 {
 		char, _ := stack.Peek()
 		fmt.Printf("%c", char)
 	}
