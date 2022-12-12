@@ -67,8 +67,10 @@ func solve(hmap [][]rune, part int) int {
 	minSteps := math.MaxInt
 	queue := NewQueue()
 
+	// We should be able to share the same visited map since this is a BFS
+	visitedMap := make(map[Coord]bool, 0)
+
 	for _, val := range possibleStarts {
-		visitedMap := make(map[Coord]bool, 0)
 		queue.Push(CoordWithInfo{val, 0, &visitedMap})
 	}
 
