@@ -32,15 +32,8 @@ import (
 // After the solution was submitted, we can still do a lot better:
 //  - Changed solvePart2: Change when we generate the ranges so we can save
 //  on iterations over y (and memory)
-
-type Cell int
-
-const (
-	Empty Cell = iota
-	Sensor
-	Beacon
-	NoBeacon
-)
+//  - Changed solvePart1: Like part 2, use ranges for the row. Also consolidate
+//  part1 and part2 range logic
 
 type Coord struct {
 	x int
@@ -88,29 +81,61 @@ type Range struct {
 	end   int
 }
 
-func solvePart1(sensors []SensorT, rowOfInterest int) int {
-	count := 0
-	cave := make(map[Coord]Cell, 0)
+func consolidateOverlaps(in []Range) (out []Range) {
+	if len(in) <= 1 {
+		return in
+	}
+
+	out = make([]Range, 0)
+	out = append(out, in[0])
+	current := 0
+
+	for i := 1; i < len(in); i++ {
+		// No overlap
+		if in[i].start > out[current].end {
+			out = append(out, in[i])
+			current = len(out) - 1
+			continue
+		}
+
+		// There is overlap, modify the end of our current out
+		out[current].end = max(out[current].end, in[i].end)
+	}
+
+	return
+}
+
+func getRanges(sensors []SensorT, row int) (ranges []Range) {
+	ranges = make([]Range, 0)
 
 	for _, sensor := range sensors {
-		sensorCoord := Coord{sensor.x, sensor.y}
-		beaconCoord := Coord{sensor.beaconX, sensor.beaconY}
-		cave[sensorCoord] = Sensor
-		cave[beaconCoord] = Beacon
+		yDistanceDiff := abs(sensor.y - row)
 
-		for x := sensor.x - sensor.distance; x <= sensor.x+sensor.distance; x++ {
-			coord := Coord{x, rowOfInterest}
-			distance := mDistance(Coord{sensor.x, sensor.y}, coord)
-
-			if distance > sensor.distance {
-				continue
-			}
-
-			if cave[coord] == Empty {
-				cave[coord] = NoBeacon
-				count += 1
-			}
+		// Can the current sensor reach this y?
+		if sensor.distance-yDistanceDiff < 0 {
+			continue
 		}
+
+		xDistanceDiff := abs(sensor.distance - yDistanceDiff)
+		xStart, xEnd := sensor.x-xDistanceDiff, sensor.x+xDistanceDiff
+		ranges = append(ranges, Range{xStart, xEnd})
+	}
+
+	sort.Slice(ranges, func(i int, j int) bool {
+		return ranges[i].start < ranges[j].start
+	})
+
+	ranges = consolidateOverlaps(ranges)
+
+	return ranges
+}
+
+func solvePart1(sensors []SensorT, rowOfInterest int) int {
+	count := 0
+	ranges := getRanges(sensors, rowOfInterest)
+
+	for _, r := range ranges {
+		count += r.end - r.start
 	}
 
 	return count
@@ -119,43 +144,18 @@ func solvePart1(sensors []SensorT, rowOfInterest int) int {
 func solvePart2(sensors []SensorT, lStart int, lEnd int) int {
 	var location Coord
 
-mainloop:
 	for y := lStart; y <= lEnd; y++ {
-		ranges := make([]Range, 0)
+		ranges := getRanges(sensors, y)
 
-		for _, sensor := range sensors {
-			yDistanceDiff := abs(sensor.y - y)
+		if len(ranges) > 1 {
+			location.y = y
 
-			// Can the current sensor reach this y?
-			if sensor.distance-yDistanceDiff < 0 {
-				continue
+			if ranges[0].start > 0 {
+				break
 			}
 
-			xDistanceDiff := abs(sensor.distance - yDistanceDiff)
-			xStart, xEnd := sensor.x-xDistanceDiff, sensor.x+xDistanceDiff
-
-			if xStart <= lStart && xEnd >= lEnd {
-				// It can't be this line, it's full
-				continue mainloop
-			}
-
-			ranges = append(ranges, Range{xStart, xEnd})
-		}
-
-		sort.Slice(ranges, func(i int, j int) bool {
-			return ranges[i].start < ranges[j].start
-		})
-
-		for x := lStart; x <= lEnd; x++ {
-			for _, r := range ranges {
-				if x < r.start {
-					location = Coord{x + 1, y}
-					break mainloop
-				}
-
-				// Move x forward by the entire range
-				x = max(x, r.end)
-			}
+			location.x = ranges[1].start - 1
+			break
 		}
 	}
 
