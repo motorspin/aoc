@@ -29,6 +29,10 @@ import (
 //  start, and then iterate thru the x/y coordinates (lStart, lEnd) from the
 //  problem statement to figure out where x is covered
 
+// After the solution was submitted, we can still do a lot better:
+//  - Changed solvePart2: Change when we generate the ranges so we can save
+//  on iterations over y (and memory)
+
 type Cell int
 
 const (
@@ -114,9 +118,11 @@ func solvePart1(sensors []SensorT, rowOfInterest int) int {
 
 func solvePart2(sensors []SensorT, lStart int, lEnd int) int {
 	var location Coord
-	ranges := make(map[int][]Range, 0)
 
+mainloop:
 	for y := lStart; y <= lEnd; y++ {
+		ranges := make([]Range, 0)
+
 		for _, sensor := range sensors {
 			yDistanceDiff := abs(sensor.y - y)
 
@@ -130,23 +136,18 @@ func solvePart2(sensors []SensorT, lStart int, lEnd int) int {
 
 			if xStart <= lStart && xEnd >= lEnd {
 				// It can't be this line, it's full
-				continue
+				continue mainloop
 			}
 
-			ranges[y] = append(ranges[y], Range{max(xStart, lStart), min(xEnd, lEnd)})
+			ranges = append(ranges, Range{xStart, xEnd})
 		}
-	}
 
-	for y := range ranges {
-		sort.Slice(ranges[y], func(i int, j int) bool {
-			return ranges[y][i].start < ranges[y][j].start
+		sort.Slice(ranges, func(i int, j int) bool {
+			return ranges[i].start < ranges[j].start
 		})
-	}
 
-mainloop:
-	for y := lStart; y <= lEnd; y++ {
 		for x := lStart; x <= lEnd; x++ {
-			for _, r := range ranges[y] {
+			for _, r := range ranges {
 				if x < r.start {
 					location = Coord{x + 1, y}
 					break mainloop
